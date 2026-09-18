@@ -42,4 +42,5 @@ def notification_dedupe_key(roll_no: str, message: str, day: date) -> str:
     SHA-256 hex of canonical_json([roll_no, message with runs of whitespace collapsed and trimmed, day.isoformat()]).
 
     Today it returns a random value, so nothing is ever deduplicated."""
-    return hashlib.sha256(canonical_json([roll_no, message.strip(), day.isoformat()]).encode()).hexdigest()
+    normalized_message = " ".join(message.split())
+    return hashlib.sha256(canonical_json([roll_no, normalized_message, day.isoformat()]).encode()).hexdigest()

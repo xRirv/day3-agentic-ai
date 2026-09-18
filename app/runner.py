@@ -50,11 +50,14 @@ def rebuild(store: RunStore, thread_id: str, run_id: str):
 def call_tool(tools: PlacementTools, placement: PlacementDb, key: str, name: str, args: dict) -> dict:
     """Run one tool. Never raises.
 
-    TODO (Part 2.3): side-effect tools (name in tools.SIDE_EFFECTS) must run through
-    placement.once(key, name, ...) so a replayed call returns the stored result instead of acting again.
-    Keep the exception handling OUTSIDE once(): a tool that raises must roll back and store no key.
+    Side-effect tools run through placement.once so a replayed call returns the stored
+    result instead of acting again. Exception handling stays outside once so failed tools
+    leave no idempotency record.
     """
     try:
+        if name in tools.SIDE_EFFECTS:
+            result, _ = placement.once(key, name, lambda: tools.call(name, args))
+            return result
         return tools.call(name, args)
     except NotImplementedError:
         return {"error": "not_implemented", "hint": f"{name} is not available yet. Tell the user."}
@@ -75,8 +78,11 @@ def execute_run(claimed: Claimed, *, store: RunStore, placement: PlacementDb, to
     contents, seq, pending, final_text = rebuild(store, claimed.thread_id, run_id)
 
     def between_steps() -> str | None:
-        # TODO (lab 1): if store.cancel_requested(run_id), mark the run cancelled (raise LeaseLost if that
-        # fails: someone else owns it) and return "cancelled". This is the only place a run may stop early.
+        # Cancellation is checked only between tool steps, so a running tool finishes.
+        if store.cancel_requested(run_id):
+            if not store.mark_cancelled(run_id, worker_id):
+                raise LeaseLost()
+            return "cancelled"
         if not store.heartbeat(run_id, worker_id, lease_seconds):
             raise LeaseLost()
         return None

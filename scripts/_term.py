@@ -21,5 +21,5 @@ def print_step(step: dict) -> None:
     colour = YELLOW if ok else RED
     name = step.get("tool") or step.get("tool_name")
     seq = step.get("step") or step.get("seq")
-    print(f"  {colour}{seq:>2} \u2192 {name}{RESET}{DIM}({short(step['args'], 90)}){RESET}")
-    print(f"     {DIM}\u2190 {short(step['result'])}{RESET}")
+    print(f"  {colour}{seq:>2} -> {name}{RESET}{DIM}({short(step['args'], 90)}){RESET}")
+    print(f"     {DIM}<- {short(step['result'])}{RESET}")

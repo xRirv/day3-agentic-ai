@@ -30,13 +30,14 @@ def main() -> int:
 
     worker = [sys.executable, "-m", "scripts.worker", "--mock", "--slow", "0.5", "--lease", str(LEASE)]
     first = subprocess.Popen(worker + ["--id", "worker-A", "--gap", "1.5"], cwd=ROOT, env=env,
-                             stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     print("2. worker-A started")
     deadline = time.time() + 30
     while placement.count("notification") == 0:
         if time.time() > deadline or first.poll() is not None:
             first.kill()
-            print("worker-A never sent the notification; is Part 1 finished?")
+            output, _ = first.communicate()
+            print(f"worker-A never sent the notification; exited with code {first.returncode}\n{output}")
             return 1
         time.sleep(0.1)
     first.kill()                       # SIGKILL on Linux/macOS, TerminateProcess on Windows: no cleanup runs
